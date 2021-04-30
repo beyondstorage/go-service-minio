@@ -1,4 +1,4 @@
-name = "example"
+name = "minio"
 
 [namespace.storage]
 

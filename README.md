@@ -1,5 +1,8 @@
-## How to create service that supports go-storage?
+## go-service-minio
 
-- Click [Use this template](https://github.com/aos-dev/go-service-example/generate) to generate a new project.
-- Update `service.toml` to match service ability.
-- Execute `make build` to generate and build project.
+[minio] is an open source cloud-native high-performance object storage service. 
+This project will use minio's native SDK to implement [go-storage]'s Storager interface, 
+enabling users to manipulate data on minio servers through a unified interface.
+
+[minio]: https://min.io/
+[go-storage]: https://github.com/aos-dev/go-storage/
