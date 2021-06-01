@@ -5,4 +5,4 @@ This project will use minio's native SDK to implement [go-storage]'s Storager in
 enabling users to manipulate data on minio servers through a unified interface.
 
 [minio]: https://min.io/
-[go-storage]: https://github.com/aos-dev/go-storage/
+[go-storage]: https://github.com/beyondstorage/go-storage/
