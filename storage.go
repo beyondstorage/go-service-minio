@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	. "github.com/aos-dev/go-storage/v3/types"
+	. "github.com/beyondstorage/go-storage/v4/types"
 )
 
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
@@ -19,7 +19,7 @@ func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (o
 	panic("not implemented")
 }
 
-func (s *Storage) metadata(ctx context.Context, opt pairStorageMetadata) (meta *StorageMeta, err error) {
+func (s *Storage) metadata(opt pairStorageMetadata) (meta *StorageMeta) {
 	panic("not implemented")
 }
 
