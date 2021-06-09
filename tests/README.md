@@ -23,7 +23,7 @@ export STORAGE_MINIO_INTEGRATION_TEST=on
 export STORAGE_MINIO_CREDENTIAL=hmac:access_key:secret_key
 export STORAGE_MINIO_ENDPOINT=endpoint
 export STORAGE_MINIO_NAME=bucketname
-```
+ ```
 
 Run tests
 

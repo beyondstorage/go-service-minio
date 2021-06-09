@@ -11,6 +11,7 @@ import (
 
 	ps "github.com/beyondstorage/go-storage/v4/pairs"
 	"github.com/beyondstorage/go-storage/v4/pkg/credential"
+	"github.com/beyondstorage/go-storage/v4/pkg/endpoint"
 	"github.com/beyondstorage/go-storage/v4/services"
 	"github.com/beyondstorage/go-storage/v4/types"
 	typ "github.com/beyondstorage/go-storage/v4/types"
@@ -71,21 +72,30 @@ func newStorager(pairs ...typ.Pair) (store *Storage, err error) {
 
 	accessKey, secretAccessKey := credentialInfo.Hmac()
 
-	region := ""
-	if opt.HasRegion {
-		region = opt.Region
+	location := ""
+	if opt.HasLocation {
+		location = opt.Location
 	}
 
-	useSSL := opt.UseSsl
-	opintions := minio.Options{
+	// parse endpoint
+	// protocol:endpoint:port
+	ep, err := endpoint.Parse(opt.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	var useSSL bool
+	if ep.Protocol == endpoint.ProtocolHTTPS {
+		useSSL = true
+	}
+	opinions := minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretAccessKey, ""),
 		Secure: useSSL,
-		Region: region,
+		Region: location,
 	}
 
-	endpoint := opt.Endpoint
 	// create new minio client
-	client, err := minio.New(endpoint, &opintions)
+	client, err := minio.New(fmt.Sprintf("%s:%d", ep.Host, ep.Port), &opinions)
 
 	workDir := "/"
 	if opt.HasWorkDir {

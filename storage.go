@@ -14,6 +14,7 @@ import (
 )
 
 const defaultListBufferSize = 200
+const defaultContentType = "application/octet-stream"
 
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 	o = s.newObject(false)
@@ -25,57 +26,12 @@ func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 }
 
 func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete) (err error) {
-	var fileVersion string
-	if opt.HasFileVersion {
-		fileVersion = opt.FileVersion
-	}
-
-	objectType := "file"
-	if opt.HasObjectType {
-		objectType = opt.ObjectType
-	}
-
 	uniquePath := s.getAbsPath(path)
-	switch objectType {
-	case "file":
-		err = s.client.RemoveObject(ctx, s.bucketName, uniquePath, minio.RemoveObjectOptions{
-			GovernanceBypass: true,
-			VersionID:        fileVersion,
-		})
-		if err != nil {
-			return err
-		}
-	case "directory":
-		ctxWithCancel, cancel := context.WithCancel(ctx)
-		defer func() {
-			// ctxWithCancel will return none-nil if closed/cancelled ...
-			if ctxWithCancel.Err() == nil {
-				cancel()
-			}
-		}()
-
-		// minio couldn't stat/delete dir object directly
-		// ref: https://github.com/minio/minio-go/issues/803
-		// using list to found
-		findChan := s.client.ListObjects(ctxWithCancel, s.bucketName, minio.ListObjectsOptions{
-			Prefix: uniquePath,
-			// recursively remove object
-			Recursive: true,
-		})
-
-		errChan := s.client.RemoveObjects(ctxWithCancel, s.bucketName, findChan, minio.RemoveObjectsOptions{})
-		if errChan != nil {
-			// if none error happens, minio-client will close this channel which have one buffer
-			// so an nil error will be returned
-			err = (<-errChan).Err
-			if err != nil {
-				// if error happens, cancel remove through context
-				cancel()
-			}
-			return err
-		}
-	default:
-		return services.PairUnsupportedError{Pair: Pair{Key: "object_type", Value: opt.ObjectType}}
+	err = s.client.RemoveObject(ctx, s.bucketName, uniquePath, minio.RemoveObjectOptions{
+		GovernanceBypass: true,
+	})
+	if err != nil {
+		return err
 	}
 
 	return
@@ -85,9 +41,6 @@ func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (o
 	// TODO: more list_mode
 
 	limit := defaultListBufferSize
-	if opt.HasListBufferSize {
-		limit = opt.ListBufferSize
-	}
 	iteratorObj := objectPageStatus{
 		bufferSize:        limit,
 		uniquePath:        s.getAbsPath(path),
@@ -162,7 +115,7 @@ func (s *Storage) listNextObject(ctx context.Context, page *ObjectPage) error {
 func (s *Storage) metadata(opt pairStorageMetadata) (meta *StorageMeta) {
 	meta = NewStorageMeta()
 	meta.WorkDir = s.workDir
-	meta.Name = ""
+	meta.Name = s.bucketName
 
 	return
 }
@@ -173,11 +126,7 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 	objectPath := s.getAbsPath(path)
 
 	// TODO: support more options
-	var fileVersion string
-	if opt.HasFileVersion {
-		fileVersion = opt.FileVersion
-	}
-	readObject, err := s.client.GetObject(ctx, s.bucketName, objectPath, minio.GetObjectOptions{VersionID: fileVersion})
+	readObject, err := s.client.GetObject(ctx, s.bucketName, objectPath, minio.GetObjectOptions{})
 	if err != nil {
 		return n, err
 	}
@@ -204,17 +153,6 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 }
 
 func (s *Storage) stat(ctx context.Context, path string, opt pairStorageStat) (o *Object, err error) {
-	defer func() {
-		if err != nil {
-			err = s.formatError("stat", err, path)
-		}
-	}()
-
-	var fileVersion string
-	if opt.HasFileVersion {
-		fileVersion = opt.FileVersion
-	}
-
 	objectType := "file"
 	if opt.HasObjectType {
 		objectType = opt.ObjectType
@@ -224,7 +162,7 @@ func (s *Storage) stat(ctx context.Context, path string, opt pairStorageStat) (o
 	dir := filepath.ToSlash(path)
 	switch objectType {
 	case "file":
-		objInfo, err := s.client.StatObject(ctx, s.bucketName, uniquePath, minio.StatObjectOptions{VersionID: fileVersion})
+		objInfo, err := s.client.StatObject(ctx, s.bucketName, uniquePath, minio.StatObjectOptions{})
 		if err != nil {
 			return o, err
 		}
@@ -288,9 +226,14 @@ func (s *Storage) stat(ctx context.Context, path string, opt pairStorageStat) (o
 }
 
 func (s *Storage) write(ctx context.Context, path string, r io.Reader, size int64, opt pairStorageWrite) (n int64, err error) {
+	contentType := defaultContentType
+	if opt.HasContentType {
+		contentType = opt.ContentType
+	}
+
 	rp := s.getAbsPath(path)
 
-	uploadInfo, err := s.client.PutObject(ctx, s.bucketName, rp, r, size, minio.PutObjectOptions{ContentType: "application/octet-stream"})
+	uploadInfo, err := s.client.PutObject(ctx, s.bucketName, rp, r, size, minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
 		return n, err
 	}
