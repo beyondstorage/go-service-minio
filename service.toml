@@ -1,6 +1,15 @@
 name = "minio"
 
+[namespace.service]
+
+[namespace.service.new]
+required = ["credential", "endpoint"]
+
 [namespace.storage]
+
+[namespace.storage.new]
+required = ["name"]
+optional = ["work_dir"]
 
 [namespace.storage.op.create]
 optional = ["object_mode"]

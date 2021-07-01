@@ -1,11 +1,37 @@
 package minio
 
 import (
+	"fmt"
+	"github.com/beyondstorage/go-endpoint"
+	ps "github.com/beyondstorage/go-storage/v4/pairs"
+	"github.com/beyondstorage/go-storage/v4/pkg/credential"
+	"github.com/beyondstorage/go-storage/v4/services"
 	"github.com/beyondstorage/go-storage/v4/types"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+// Service is the minio service.
+type Service struct {
+	service *minio.Client
+
+	defaultPairs DefaultServicePairs
+	features     ServiceFeatures
+
+	types.UnimplementedServicer
+}
+
+func (s *Service) String() string {
+	return fmt.Sprintf("Servicer minio")
+}
 
 // Storage is the example client.
 type Storage struct {
+	client *minio.Client
+
+	bucket    string
+	workDir string
+
 	defaultPairs DefaultStoragePairs
 	features     StorageFeatures
 
@@ -14,14 +40,154 @@ type Storage struct {
 
 // String implements Storager.String
 func (s *Storage) String() string {
-	panic("implement me")
+	return fmt.Sprintf(
+		"Storager minio {Name: %s, WorkDir: %s}",
+		s.bucket, s.workDir,
+	)
+}
+
+func New(pairs ...types.Pair) (types.Servicer, types.Storager, error) {
+	return newServicerAndStorager(pairs...)
+}
+
+func NewServicer(pairs ...types.Pair) (types.Servicer, error) {
+	return newServicer(pairs...)
 }
 
 // NewStorager will create Storager only.
 func NewStorager(pairs ...types.Pair) (types.Storager, error) {
-	panic("implement me")
+	_, store, err := newServicerAndStorager(pairs...)
+	return store, err
+}
+
+func newServicer(pairs ...types.Pair) (srv *Service, err error){
+	defer func() {
+		if err != nil {
+			err = services.InitError{Op: "new_servicer", Type: Type, Err: formatError(err), Pairs: pairs}
+		}
+	}()
+
+	srv = &Service{}
+
+	opt, err := parsePairServiceNew(pairs)
+	if err != nil {
+		return nil, err
+	}
+
+	cp, err := credential.Parse(opt.Credential)
+	if err != nil {
+		return nil, err
+	}
+	if cp.Protocol() != credential.ProtocolHmac {
+		return nil, services.PairUnsupportedError{Pair: ps.WithCredential(opt.Credential)}
+	}
+	ak, sk := cp.Hmac()
+
+	ep, err := endpoint.Parse(opt.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	var url string
+	var secure bool
+	switch ep.Protocol() {
+	case endpoint.ProtocolHTTP:
+		url, _, _ = ep.HTTP()
+		url = url[7:]
+		secure = false
+	case endpoint.ProtocolHTTPS:
+		url, _, _ = ep.HTTPS()
+		url = url[8:]
+		secure = true
+	default:
+		return nil, services.PairUnsupportedError{Pair: ps.WithEndpoint(opt.Endpoint)}
+	}
+
+	srv.service, err = minio.New(url, &minio.Options{
+		Creds: credentials.NewStaticV4(ak, sk, ""),
+		Secure: secure,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return
+}
+
+func newServicerAndStorager(pairs ...types.Pair) (srv *Service, store *Storage, err error) {
+	srv, err = newServicer(pairs...)
+	if err != nil {
+		return
+	}
+
+	store, err = srv.newStorage(pairs...)
+	if err != nil {
+		err = services.InitError{Op: "new_storager", Type: Type, Err: formatError(err), Pairs: pairs}
+		return nil, nil, err
+	}
+	return srv, store, nil
+}
+
+func formatError(err error) error {
+	if _, ok := err.(services.InternalError); ok {
+		return err
+	}
+
+	e,ok := err.(minio.ErrorResponse)
+	if ok {
+		switch e.Code {
+		case "AccessDenied":
+			return fmt.Errorf("%w, %v", services.ErrPermissionDenied, err)
+		case "NoSuchKey":
+			return fmt.Errorf("%w, %v", services.ErrObjectNotExist, err)
+		default:
+			return fmt.Errorf("%w, %v", services.ErrUnexpected, err)
+		}
+	}
+
+	return fmt.Errorf("%w, %v", services.ErrUnexpected, err)
+}
+
+func (s *Service) newStorage(pairs ...types.Pair) (st *Storage, err error) {
+	opt, err := parsePairStorageNew(pairs)
+	if err != nil {
+		return nil, err
+	}
+
+	store := &Storage{
+		client:  	s.service,
+		bucket:    	opt.Name,
+		workDir: 	"/",
+	}
+
+	if opt.HasWorkDir {
+		store.workDir = opt.WorkDir
+	}
+	return store, nil
+}
+
+func (s *Service) formatError(op string, err error, name string) error {
+	if err == nil {
+		return nil
+	}
+
+	return services.ServiceError{
+		Op:	 		op,
+		Err: 		formatError(err),
+		Servicer: 	s,
+		Name: 		name,
+	}
 }
 
 func (s *Storage) formatError(op string, err error, path ...string) error {
-	panic("implement me")
+	if err == nil {
+		return nil
+	}
+
+	return services.StorageError{
+		Op:	 		op,
+		Err: 		formatError(err),
+		Storager: 	s,
+		Path: 		path,
+	}
 }

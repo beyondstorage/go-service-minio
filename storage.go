@@ -2,9 +2,8 @@ package minio
 
 import (
 	"context"
-	"io"
-
 	. "github.com/beyondstorage/go-storage/v4/types"
+	"io"
 )
 
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
