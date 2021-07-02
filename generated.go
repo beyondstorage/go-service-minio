@@ -95,25 +95,80 @@ func setStorageSystemMetadata(s *StorageMeta, sm StorageSystemMetadata) {
 	s.SetSystemMetadata(sm)
 }
 
+// WithDefaultServicePairs will apply default_service_pairs value to Options.
+//
+// DefaultServicePairs set default pairs for service actions
+func WithDefaultServicePairs(v DefaultServicePairs) Pair {
+	return Pair{
+		Key:   "default_service_pairs",
+		Value: v,
+	}
+}
+
+// WithDefaultStoragePairs will apply default_storage_pairs value to Options.
+//
+// DefaultStoragePairs set default pairs for storager actions
+func WithDefaultStoragePairs(v DefaultStoragePairs) Pair {
+	return Pair{
+		Key:   "default_storage_pairs",
+		Value: v,
+	}
+}
+
+// WithServiceFeatures will apply service_features value to Options.
+//
+// ServiceFeatures set service features
+func WithServiceFeatures(v ServiceFeatures) Pair {
+	return Pair{
+		Key:   "service_features",
+		Value: v,
+	}
+}
+
+// WithStorageClass will apply storage_class value to Options.
+//
+// StorageClass
+func WithStorageClass(v string) Pair {
+	return Pair{
+		Key:   "storage_class",
+		Value: v,
+	}
+}
+
+// WithStorageFeatures will apply storage_features value to Options.
+//
+// StorageFeatures set storage features
+func WithStorageFeatures(v StorageFeatures) Pair {
+	return Pair{
+		Key:   "storage_features",
+		Value: v,
+	}
+}
+
 var pairMap = map[string]string{
-	"content_md5":         "string",
-	"content_type":        "string",
-	"context":             "context.Context",
-	"continuation_token":  "string",
-	"credential":          "string",
-	"endpoint":            "string",
-	"expire":              "int",
-	"http_client_options": "*httpclient.Options",
-	"interceptor":         "Interceptor",
-	"io_callback":         "func([]byte)",
-	"list_mode":           "ListMode",
-	"location":            "string",
-	"multipart_id":        "string",
-	"name":                "string",
-	"object_mode":         "ObjectMode",
-	"offset":              "int64",
-	"size":                "int64",
-	"work_dir":            "string",
+	"content_md5":           "string",
+	"content_type":          "string",
+	"context":               "context.Context",
+	"continuation_token":    "string",
+	"credential":            "string",
+	"default_service_pairs": "DefaultServicePairs",
+	"default_storage_pairs": "DefaultStoragePairs",
+	"endpoint":              "string",
+	"expire":                "int",
+	"http_client_options":   "*httpclient.Options",
+	"interceptor":           "Interceptor",
+	"io_callback":           "func([]byte)",
+	"list_mode":             "ListMode",
+	"location":              "string",
+	"multipart_id":          "string",
+	"name":                  "string",
+	"object_mode":           "ObjectMode",
+	"offset":                "int64",
+	"service_features":      "ServiceFeatures",
+	"size":                  "int64",
+	"storage_class":         "string",
+	"storage_features":      "StorageFeatures",
+	"work_dir":              "string",
 }
 var (
 	_ Servicer = &Service{}
@@ -148,6 +203,10 @@ type pairServiceNew struct {
 	HasEndpoint   bool
 	Endpoint      string
 	// Optional pairs
+	HasDefaultServicePairs bool
+	DefaultServicePairs    DefaultServicePairs
+	HasServiceFeatures     bool
+	ServiceFeatures        ServiceFeatures
 }
 
 // parsePairServiceNew will parse Pair slice into *pairServiceNew
@@ -171,7 +230,19 @@ func parsePairServiceNew(opts []Pair) (pairServiceNew, error) {
 			}
 			result.HasEndpoint = true
 			result.Endpoint = v.Value.(string)
-			// Optional pairs
+		// Optional pairs
+		case "default_service_pairs":
+			if result.HasDefaultServicePairs {
+				continue
+			}
+			result.HasDefaultServicePairs = true
+			result.DefaultServicePairs = v.Value.(DefaultServicePairs)
+		case "service_features":
+			if result.HasServiceFeatures {
+				continue
+			}
+			result.HasServiceFeatures = true
+			result.ServiceFeatures = v.Value.(ServiceFeatures)
 		}
 	}
 	if !result.HasCredential {
@@ -422,8 +493,12 @@ type pairStorageNew struct {
 	HasName bool
 	Name    string
 	// Optional pairs
-	HasWorkDir bool
-	WorkDir    string
+	HasDefaultStoragePairs bool
+	DefaultStoragePairs    DefaultStoragePairs
+	HasStorageFeatures     bool
+	StorageFeatures        StorageFeatures
+	HasWorkDir             bool
+	WorkDir                string
 }
 
 // parsePairStorageNew will parse Pair slice into *pairStorageNew
@@ -442,6 +517,18 @@ func parsePairStorageNew(opts []Pair) (pairStorageNew, error) {
 			result.HasName = true
 			result.Name = v.Value.(string)
 		// Optional pairs
+		case "default_storage_pairs":
+			if result.HasDefaultStoragePairs {
+				continue
+			}
+			result.HasDefaultStoragePairs = true
+			result.DefaultStoragePairs = v.Value.(DefaultStoragePairs)
+		case "storage_features":
+			if result.HasStorageFeatures {
+				continue
+			}
+			result.HasStorageFeatures = true
+			result.StorageFeatures = v.Value.(StorageFeatures)
 		case "work_dir":
 			if result.HasWorkDir {
 				continue
@@ -671,13 +758,15 @@ func (s *Storage) parsePairStorageStat(opts []Pair) (pairStorageStat, error) {
 
 // pairStorageWrite is the parsed struct
 type pairStorageWrite struct {
-	pairs          []Pair
-	HasContentMd5  bool
-	ContentMd5     string
-	HasContentType bool
-	ContentType    string
-	HasIoCallback  bool
-	IoCallback     func([]byte)
+	pairs           []Pair
+	HasContentMd5   bool
+	ContentMd5      string
+	HasContentType  bool
+	ContentType     string
+	HasIoCallback   bool
+	IoCallback      func([]byte)
+	HasStorageClass bool
+	StorageClass    string
 }
 
 // parsePairStorageWrite will parse Pair slice into *pairStorageWrite
@@ -708,6 +797,13 @@ func (s *Storage) parsePairStorageWrite(opts []Pair) (pairStorageWrite, error) {
 			}
 			result.HasIoCallback = true
 			result.IoCallback = v.Value.(func([]byte))
+			continue
+		case "storage_class":
+			if result.HasStorageClass {
+				continue
+			}
+			result.HasStorageClass = true
+			result.StorageClass = v.Value.(string)
 			continue
 		default:
 			return pairStorageWrite{}, services.PairUnsupportedError{Pair: v}

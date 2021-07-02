@@ -2,13 +2,16 @@ package minio
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+
 	"github.com/beyondstorage/go-endpoint"
 	ps "github.com/beyondstorage/go-storage/v4/pairs"
 	"github.com/beyondstorage/go-storage/v4/pkg/credential"
 	"github.com/beyondstorage/go-storage/v4/services"
 	"github.com/beyondstorage/go-storage/v4/types"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // Service is the minio service.
@@ -29,7 +32,7 @@ func (s *Service) String() string {
 type Storage struct {
 	client *minio.Client
 
-	bucket    string
+	bucket  string
 	workDir string
 
 	defaultPairs DefaultStoragePairs
@@ -60,7 +63,7 @@ func NewStorager(pairs ...types.Pair) (types.Storager, error) {
 	return store, err
 }
 
-func newServicer(pairs ...types.Pair) (srv *Service, err error){
+func newServicer(pairs ...types.Pair) (srv *Service, err error) {
 	defer func() {
 		if err != nil {
 			err = services.InitError{Op: "new_servicer", Type: Type, Err: formatError(err), Pairs: pairs}
@@ -104,11 +107,18 @@ func newServicer(pairs ...types.Pair) (srv *Service, err error){
 	}
 
 	srv.service, err = minio.New(url, &minio.Options{
-		Creds: credentials.NewStaticV4(ak, sk, ""),
+		Creds:  credentials.NewStaticV4(ak, sk, ""),
 		Secure: secure,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if opt.HasDefaultServicePairs {
+		srv.defaultPairs = opt.DefaultServicePairs
+	}
+	if opt.HasServiceFeatures {
+		srv.features = opt.ServiceFeatures
 	}
 
 	return
@@ -133,7 +143,7 @@ func formatError(err error) error {
 		return err
 	}
 
-	e,ok := err.(minio.ErrorResponse)
+	e, ok := err.(minio.ErrorResponse)
 	if ok {
 		switch e.Code {
 		case "AccessDenied":
@@ -155,14 +165,24 @@ func (s *Service) newStorage(pairs ...types.Pair) (st *Storage, err error) {
 	}
 
 	store := &Storage{
-		client:  	s.service,
-		bucket:    	opt.Name,
-		workDir: 	"/",
+		client:  s.service,
+		bucket:  opt.Name,
+		workDir: "/",
 	}
 
 	if opt.HasWorkDir {
+		if !strings.HasSuffix(opt.WorkDir, "/") {
+			opt.WorkDir += "/"
+		}
 		store.workDir = opt.WorkDir
 	}
+	if opt.HasDefaultStoragePairs {
+		store.defaultPairs = opt.DefaultStoragePairs
+	}
+	if opt.HasStorageFeatures {
+		store.features = opt.StorageFeatures
+	}
+
 	return store, nil
 }
 
@@ -172,10 +192,10 @@ func (s *Service) formatError(op string, err error, name string) error {
 	}
 
 	return services.ServiceError{
-		Op:	 		op,
-		Err: 		formatError(err),
-		Servicer: 	s,
-		Name: 		name,
+		Op:       op,
+		Err:      formatError(err),
+		Servicer: s,
+		Name:     name,
 	}
 }
 
@@ -185,9 +205,46 @@ func (s *Storage) formatError(op string, err error, path ...string) error {
 	}
 
 	return services.StorageError{
-		Op:	 		op,
-		Err: 		formatError(err),
-		Storager: 	s,
-		Path: 		path,
+		Op:       op,
+		Err:      formatError(err),
+		Storager: s,
+		Path:     path,
 	}
+}
+
+// getAbsPath will calculate object storage's abs path
+func (s *Storage) getAbsPath(path string) string {
+	prefix := strings.TrimPrefix(s.workDir, "/")
+	return prefix + path
+}
+
+// getRelPath will get object storage's rel path.
+func (s *Storage) getRelPath(path string) string {
+	prefix := strings.TrimPrefix(s.workDir, "/")
+	return strings.TrimPrefix(path, prefix)
+}
+
+func (s *Storage) formatFileObject(v minio.ObjectInfo) (o *types.Object, err error) {
+	if v.ETag != "" {
+		//is object
+		o = s.newObject(false)
+		o.Mode |= types.ModeRead
+	} else {
+		//is dir
+		o = s.newObject(true)
+		o.Mode |= types.ModeDir
+	}
+
+	o.ID = v.Key
+	o.Path = s.getRelPath(v.Key)
+	o.SetEtag(v.ETag)
+	o.SetContentLength(v.Size)
+	o.SetContentType(v.ContentType)
+	o.SetLastModified(v.LastModified)
+
+	return
+}
+
+func (s *Storage) newObject(done bool) *types.Object {
+	return types.NewObject(s, done)
 }
