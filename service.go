@@ -2,12 +2,13 @@ package minio
 
 import (
 	"context"
-
 	"github.com/minio/minio-go/v7"
 
 	ps "github.com/beyondstorage/go-storage/v4/pairs"
 	. "github.com/beyondstorage/go-storage/v4/types"
 )
+
+const defaultListStoragerBufferSize = 50
 
 func (s *Service) create(ctx context.Context, name string, opt pairServiceCreate) (store Storager, err error) {
 	st, err := s.newStorage(ps.WithName(name))
@@ -38,23 +39,35 @@ func (s *Service) get(ctx context.Context, name string, opt pairServiceGet) (sto
 }
 
 func (s *Service) list(ctx context.Context, opt pairServiceList) (sti *StoragerIterator, err error) {
-	input := &storagePageStatus{}
+	input := &storagePageStatus{
+		bufferSize: defaultListStoragerBufferSize,
+	}
+	input.buckets, err = s.service.ListBuckets(ctx)
+	if err != nil {
+		return nil, err
+	}
+	input.total = len(input.buckets)
+	input.remain = input.total
 	return NewStoragerIterator(ctx, s.nextStoragePage, input), nil
 }
 
 func (s *Service) nextStoragePage(ctx context.Context, page *StoragerPage) error {
-	buckets, err := s.service.ListBuckets(ctx)
-	if err != nil {
-		return err
+	input := page.Status.(*storagePageStatus)
+	if input.remain < input.bufferSize {
+		input.bufferSize = input.remain
 	}
-
-	for _, v := range buckets {
-		store, err := s.newStorage(ps.WithName(v.Name))
+	for i := 0; i < input.bufferSize; i++ {
+		store, err := s.newStorage(ps.WithName(input.buckets[i].Name))
 		if err != nil {
 			return err
 		}
 		page.Data = append(page.Data, store)
 	}
+	input.buckets = input.buckets[input.bufferSize:]
+	input.remain -= input.bufferSize
 
-	return IterateDone
+	if input.remain == 0 {
+		return IterateDone
+	}
+	return nil
 }

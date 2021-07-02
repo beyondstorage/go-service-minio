@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const defaultListBufferSize = 5
+const defaultListObjectBufferSize = 100
 
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 	rp := s.getAbsPath(path)
@@ -63,7 +63,7 @@ func (s *Storage) deleteDir(ctx context.Context, path string, opt pairStorageDel
 func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (oi *ObjectIterator, err error) {
 	rp := s.getAbsPath(path)
 	input := &objectPageStatus{
-		bufferSize: defaultListBufferSize,
+		bufferSize: defaultListObjectBufferSize,
 	}
 
 	options := minio.ListObjectsOptions{WithMetadata: true}

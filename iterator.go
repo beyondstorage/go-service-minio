@@ -1,11 +1,20 @@
 package minio
 
-import "github.com/minio/minio-go/v7"
+import (
+	"github.com/minio/minio-go/v7"
+	"strconv"
+)
 
-type storagePageStatus struct{}
+type storagePageStatus struct {
+	bufferSize int
+	total      int
+	remain     int
+
+	buckets []minio.BucketInfo
+}
 
 func (i *storagePageStatus) ContinuationToken() string {
-	return ""
+	return strconv.Itoa(i.total - i.remain)
 }
 
 type objectPageStatus struct {
@@ -16,5 +25,5 @@ type objectPageStatus struct {
 }
 
 func (i *objectPageStatus) ContinuationToken() string {
-	return string(i.counter)
+	return strconv.Itoa(i.counter)
 }
