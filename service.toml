@@ -7,6 +7,7 @@ required = ["credential", "endpoint"]
 optional = ["service_features", "default_service_pairs"]
 
 [namespace.storage]
+features = ["virtual_dir"]
 
 [namespace.storage.new]
 required = ["name"]
@@ -47,4 +48,7 @@ type = "DefaultStoragePairs"
 description = "set default pairs for storager actions"
 
 [pairs.storage_class]
+type = "string"
+
+[infos.object.meta.storage-class]
 type = "string"

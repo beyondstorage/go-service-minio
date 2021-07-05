@@ -25,6 +25,8 @@ const Type = "minio"
 //
 // Deprecated: Use ObjectSystemMetadata instead.
 type ObjectMetadata struct {
+	// StorageClass
+	StorageClass string
 }
 
 // GetObjectMetadata will get ObjectMetadata from Object.
@@ -52,6 +54,8 @@ func setObjectMetadata(o *Object, om ObjectMetadata) {
 
 // ObjectSystemMetadata stores system metadata for object.
 type ObjectSystemMetadata struct {
+	// StorageClass
+	StorageClass string
 }
 
 // GetObjectSystemMetadata will get ObjectSystemMetadata from Object.
@@ -483,6 +487,13 @@ type StorageFeatures struct {
 
 	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
 	VirtualPairAll bool
+	// VirtualDir virtual_dir feature is designed for a service that doesn't have native dir support but wants to provide simulated operations.
+	//
+	// - If this feature is disabled (the default behavior), the service will behave like it doesn't have any dir support.
+	// - If this feature is enabled, the service will support simulated dir behavior in create_dir, create, list, delete, and so on.
+	//
+	// This feature was introduced in GSP-109.
+	VirtualDir bool
 }
 
 // pairStorageNew is the parsed struct

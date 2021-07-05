@@ -7,6 +7,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 
+	ps "github.com/beyondstorage/go-storage/v4/pairs"
 	"github.com/beyondstorage/go-storage/v4/pkg/iowrap"
 	"github.com/beyondstorage/go-storage/v4/services"
 	. "github.com/beyondstorage/go-storage/v4/types"
@@ -17,6 +18,9 @@ const defaultListObjectBufferSize = 100
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 	rp := s.getAbsPath(path)
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
+		if !s.features.VirtualDir {
+			return
+		}
 		rp += "/"
 		o = s.newObject(true)
 		o.Mode = ModeDir
@@ -30,10 +34,14 @@ func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 }
 
 func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete) (err error) {
-	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
-		return services.ObjectModeInvalidError{Actual: opt.ObjectMode}
-	}
 	rp := s.getAbsPath(path)
+	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
+		if !s.features.VirtualDir {
+			err = services.PairUnsupportedError{Pair: ps.WithObjectMode(opt.ObjectMode)}
+			return
+		}
+		rp += "/"
+	}
 	err = s.client.RemoveObject(ctx, s.bucket, rp, minio.RemoveObjectOptions{})
 	if err != nil {
 		return err
@@ -114,7 +122,11 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 func (s *Storage) stat(ctx context.Context, path string, opt pairStorageStat) (o *Object, err error) {
 	rp := s.getAbsPath(path)
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
-		return nil, services.ObjectModeInvalidError{Actual: opt.ObjectMode}
+		if !s.features.VirtualDir {
+			err = services.PairUnsupportedError{Pair: ps.WithObjectMode(opt.ObjectMode)}
+			return
+		}
+		rp += "/"
 	}
 	output, err := s.client.StatObject(ctx, s.bucket, rp, minio.StatObjectOptions{})
 	if err != nil {

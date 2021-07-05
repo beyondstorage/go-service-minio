@@ -91,20 +91,20 @@ func newServicer(pairs ...types.Pair) (srv *Service, err error) {
 		return nil, err
 	}
 
-	var url string
+	var host string
+	var port int
 	var secure bool
 	switch ep.Protocol() {
 	case endpoint.ProtocolHTTP:
-		url, _, _ = ep.HTTP()
-		url = url[7:]
+		_, host, port = ep.HTTP()
 		secure = false
 	case endpoint.ProtocolHTTPS:
-		url, _, _ = ep.HTTPS()
-		url = url[8:]
+		_, host, port = ep.HTTPS()
 		secure = true
 	default:
 		return nil, services.PairUnsupportedError{Pair: ps.WithEndpoint(opt.Endpoint)}
 	}
+	url := fmt.Sprintf("%s:%d", host, port)
 
 	srv.service, err = minio.New(url, &minio.Options{
 		Creds:  credentials.NewStaticV4(ak, sk, ""),
@@ -237,6 +237,10 @@ func (s *Storage) formatFileObject(v minio.ObjectInfo) (o *types.Object, err err
 	o.SetContentLength(v.Size)
 	o.SetContentType(v.ContentType)
 	o.SetLastModified(v.LastModified)
+
+	var sm ObjectSystemMetadata
+	sm.StorageClass = v.StorageClass
+	o.SetSystemMetadata(sm)
 
 	return
 }
