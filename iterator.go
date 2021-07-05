@@ -1,8 +1,9 @@
 package minio
 
 import (
-	"github.com/minio/minio-go/v7"
 	"strconv"
+
+	"github.com/minio/minio-go/v7"
 )
 
 type storagePageStatus struct {
