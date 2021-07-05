@@ -7,20 +7,17 @@ import (
 )
 
 type storagePageStatus struct {
-	bufferSize int
-	total      int
-	remain     int
-
 	buckets []minio.BucketInfo
 }
 
 func (i *storagePageStatus) ContinuationToken() string {
-	return strconv.Itoa(i.total - i.remain)
+	return ""
 }
 
 type objectPageStatus struct {
 	bufferSize int
 	counter    int
+	options    minio.ListObjectsOptions
 
 	objChan <-chan minio.ObjectInfo
 }

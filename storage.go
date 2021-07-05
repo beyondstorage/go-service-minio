@@ -7,7 +7,6 @@ import (
 
 	"github.com/minio/minio-go/v7"
 
-	"github.com/beyondstorage/go-storage/v4/pairs"
 	"github.com/beyondstorage/go-storage/v4/pkg/iowrap"
 	"github.com/beyondstorage/go-storage/v4/services"
 	. "github.com/beyondstorage/go-storage/v4/types"
@@ -32,7 +31,7 @@ func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 
 func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete) (err error) {
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
-		return s.deleteDir(ctx, path, opt)
+		return services.ObjectModeInvalidError{Actual: opt.ObjectMode}
 	}
 	rp := s.getAbsPath(path)
 	err = s.client.RemoveObject(ctx, s.bucket, rp, minio.RemoveObjectOptions{})
@@ -42,29 +41,8 @@ func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete
 	return nil
 }
 
-func (s *Storage) deleteDir(ctx context.Context, path string, opt pairStorageDelete) (err error) {
-	objIter, err := s.List(path, pairs.WithListMode(ListModePrefix))
-	for err == nil {
-		var obj *Object
-		obj, err = objIter.Next()
-		if obj != nil {
-			e := s.client.RemoveObject(ctx, s.bucket, obj.ID, minio.RemoveObjectOptions{})
-			if e != nil {
-				return e
-			}
-		}
-	}
-	if err == IterateDone {
-		return nil
-	}
-	return err
-}
-
 func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (oi *ObjectIterator, err error) {
 	rp := s.getAbsPath(path)
-	input := &objectPageStatus{
-		bufferSize: defaultListObjectBufferSize,
-	}
 	options := minio.ListObjectsOptions{WithMetadata: true}
 	switch {
 	case opt.ListMode.IsDir():
@@ -78,7 +56,11 @@ func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (o
 		return nil, services.ListModeInvalidError{Actual: opt.ListMode}
 	}
 	options.Prefix = rp
-	input.objChan = s.client.ListObjects(ctx, s.bucket, options)
+
+	input := &objectPageStatus{
+		bufferSize: defaultListObjectBufferSize,
+		options:    options,
+	}
 	return NewObjectIterator(ctx, s.nextObjectPage, input), nil
 }
 
@@ -91,6 +73,10 @@ func (s *Storage) metadata(opt pairStorageMetadata) (meta *StorageMeta) {
 
 func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 	input := page.Status.(*objectPageStatus)
+	if input.objChan == nil {
+		input.objChan = s.client.ListObjects(ctx, s.bucket, input.options)
+	}
+
 	for i := 0; i < input.bufferSize; i++ {
 		v, ok := <-input.objChan
 		if !ok {
@@ -98,8 +84,11 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 		}
 		if v.Err == nil {
 			o, err := s.formatFileObject(v)
-			if err != nil {
+			if err != nil && err != services.ErrObjectNotExist {
 				return err
+			}
+			if err == services.ErrObjectNotExist {
+				continue
 			}
 			page.Data = append(page.Data, o)
 			input.counter++
@@ -125,8 +114,7 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 func (s *Storage) stat(ctx context.Context, path string, opt pairStorageStat) (o *Object, err error) {
 	rp := s.getAbsPath(path)
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
-		rp += "/"
-		//TODO
+		return nil, services.ObjectModeInvalidError{Actual: opt.ObjectMode}
 	}
 	output, err := s.client.StatObject(ctx, s.bucket, rp, minio.StatObjectOptions{})
 	if err != nil {
