@@ -15,7 +15,6 @@ const defaultListObjectBufferSize = 100
 
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 	rp := s.getAbsPath(path)
-
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
 		rp += "/"
 		o = s.newObject(true)
@@ -33,7 +32,6 @@ func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
 		return s.deleteDir(ctx, path, opt)
 	}
-
 	rp := s.getAbsPath(path)
 	err = s.client.RemoveObject(ctx, s.bucket, rp, minio.RemoveObjectOptions{})
 	if err != nil {
@@ -65,7 +63,6 @@ func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (o
 	input := &objectPageStatus{
 		bufferSize: defaultListObjectBufferSize,
 	}
-
 	options := minio.ListObjectsOptions{WithMetadata: true}
 	switch {
 	case opt.ListMode.IsDir():
@@ -79,10 +76,15 @@ func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (o
 		return nil, services.ListModeInvalidError{Actual: opt.ListMode}
 	}
 	options.Prefix = rp
-
 	input.objChan = s.client.ListObjects(ctx, s.bucket, options)
-
 	return NewObjectIterator(ctx, s.nextObjectPage, input), nil
+}
+
+func (s *Storage) metadata(opt pairStorageMetadata) (meta *StorageMeta) {
+	meta = NewStorageMeta()
+	meta.Name = s.bucket
+	meta.WorkDir = s.workDir
+	return meta
 }
 
 func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
@@ -92,7 +94,6 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 		if !ok {
 			return IterateDone
 		}
-
 		if v.Err == nil {
 			o, err := s.formatFileObject(v)
 			if err != nil {
@@ -105,38 +106,26 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 	return nil
 }
 
-func (s *Storage) metadata(opt pairStorageMetadata) (meta *StorageMeta) {
-	meta = NewStorageMeta()
-	meta.Name = s.bucket
-	meta.WorkDir = s.workDir
-	return meta
-}
-
 func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairStorageRead) (n int64, err error) {
 	rp := s.getAbsPath(path)
-
 	output, err := s.client.GetObject(ctx, s.bucket, rp, minio.GetObjectOptions{})
 	if err != nil {
 		return 0, err
 	}
 	defer output.Close()
-
 	var rc io.ReadCloser = output
 	if opt.HasIoCallback {
 		rc = iowrap.CallbackReadCloser(output, opt.IoCallback)
 	}
-
 	return io.Copy(w, rc)
 }
 
 func (s *Storage) stat(ctx context.Context, path string, opt pairStorageStat) (o *Object, err error) {
 	rp := s.getAbsPath(path)
-
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
 		rp += "/"
 		//TODO
 	}
-
 	output, err := s.client.StatObject(ctx, s.bucket, rp, minio.StatObjectOptions{})
 	if err != nil {
 		return nil, err
@@ -145,7 +134,6 @@ func (s *Storage) stat(ctx context.Context, path string, opt pairStorageStat) (o
 	if err != nil {
 		return nil, err
 	}
-
 	return
 }
 
@@ -155,7 +143,6 @@ func (s *Storage) write(ctx context.Context, path string, r io.Reader, size int6
 	if opt.HasIoCallback {
 		r = iowrap.CallbackReader(r, opt.IoCallback)
 	}
-
 	options := minio.PutObjectOptions{}
 	if opt.HasContentType {
 		options.ContentType = opt.ContentType
@@ -166,7 +153,6 @@ func (s *Storage) write(ctx context.Context, path string, r io.Reader, size int6
 	if opt.HasStorageClass {
 		options.StorageClass = opt.StorageClass
 	}
-
 	_, err = s.client.PutObject(ctx, s.bucket, rp, r, size, options)
 	if err != nil {
 		return 0, err

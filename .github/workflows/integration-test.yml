@@ -1,11 +1,20 @@
 name: "Integration Test"
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   integration_test:
     name: "Integration Test"
-    runs-on: [Linux]
+    runs-on: ubuntu-latest
+
+    services:
+      minio:
+        image: wktk/minio-server
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ACCESS_KEY: "minioadmin"
+          MINIO_SECRET_KEY: "minioadmin"
 
     strategy:
       matrix:
@@ -22,8 +31,8 @@ jobs:
 
       - name: Test
         env:
-          STORAGE_MINIO_INTEGRATION_TEST: ${{ secrets.STORAGE_MINIO_INTEGRATION_TEST }}
-          STORAGE_MINIO_CREDENTIAL: ${{ secrets.STORAGE_MINIO_CREDENTIAL }}
-          STORAGE_MINIO_NAME: ${{ secrets.STORAGE_MINIO_NAME }}
-          STORAGE_MINIO_ENDPOINT: ${{ secrets.STORAGE_MINIO_ENDPOINT }}
+          STORAGE_MINIO_INTEGRATION_TEST: "on"
+          STORAGE_MINIO_CREDENTIAL: "minioadmin"
+          STORAGE_MINIO_NAME: "minioadmin"
+          STORAGE_MINIO_ENDPOINT: "http:127.0.0.1:9000"
         run: make integration_test

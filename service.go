@@ -2,10 +2,9 @@ package minio
 
 import (
 	"context"
-	"github.com/minio/minio-go/v7"
-
 	ps "github.com/beyondstorage/go-storage/v4/pairs"
 	. "github.com/beyondstorage/go-storage/v4/types"
+	"github.com/minio/minio-go/v7"
 )
 
 const defaultListStoragerBufferSize = 50
@@ -65,7 +64,6 @@ func (s *Service) nextStoragePage(ctx context.Context, page *StoragerPage) error
 	}
 	input.buckets = input.buckets[input.bufferSize:]
 	input.remain -= input.bufferSize
-
 	if input.remain == 0 {
 		return IterateDone
 	}
