@@ -33,6 +33,6 @@ jobs:
         env:
           STORAGE_MINIO_INTEGRATION_TEST: "on"
           STORAGE_MINIO_CREDENTIAL: "hmac:minioadmin:minioadmin"
-          STORAGE_MINIO_NAME: "testBucket"
+          STORAGE_MINIO_NAME: "test-bucket"
           STORAGE_MINIO_ENDPOINT: "http:127.0.0.1:9000"
         run: make integration_test
