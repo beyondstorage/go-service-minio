@@ -146,9 +146,6 @@ func (s *Storage) write(ctx context.Context, path string, r io.Reader, size int6
 	if opt.HasContentType {
 		options.ContentType = opt.ContentType
 	}
-	if opt.HasContentMd5 {
-		options.SendContentMd5 = true
-	}
 	if opt.HasStorageClass {
 		options.StorageClass = opt.StorageClass
 	}
