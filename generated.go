@@ -25,6 +25,8 @@ const Type = "minio"
 //
 // Deprecated: Use ObjectSystemMetadata instead.
 type ObjectMetadata struct {
+	// StorageClass
+	StorageClass string
 }
 
 // GetObjectMetadata will get ObjectMetadata from Object.
@@ -52,6 +54,8 @@ func setObjectMetadata(o *Object, om ObjectMetadata) {
 
 // ObjectSystemMetadata stores system metadata for object.
 type ObjectSystemMetadata struct {
+	// StorageClass
+	StorageClass string
 }
 
 // GetObjectSystemMetadata will get ObjectSystemMetadata from Object.
@@ -95,26 +99,367 @@ func setStorageSystemMetadata(s *StorageMeta, sm StorageSystemMetadata) {
 	s.SetSystemMetadata(sm)
 }
 
-var pairMap = map[string]string{
-	"content_md5":         "string",
-	"content_type":        "string",
-	"context":             "context.Context",
-	"continuation_token":  "string",
-	"credential":          "string",
-	"endpoint":            "string",
-	"expire":              "int",
-	"http_client_options": "*httpclient.Options",
-	"interceptor":         "Interceptor",
-	"io_callback":         "func([]byte)",
-	"list_mode":           "ListMode",
-	"location":            "string",
-	"multipart_id":        "string",
-	"name":                "string",
-	"object_mode":         "ObjectMode",
-	"offset":              "int64",
-	"size":                "int64",
-	"work_dir":            "string",
+// WithDefaultServicePairs will apply default_service_pairs value to Options.
+//
+// DefaultServicePairs set default pairs for service actions
+func WithDefaultServicePairs(v DefaultServicePairs) Pair {
+	return Pair{
+		Key:   "default_service_pairs",
+		Value: v,
+	}
 }
+
+// WithDefaultStoragePairs will apply default_storage_pairs value to Options.
+//
+// DefaultStoragePairs set default pairs for storager actions
+func WithDefaultStoragePairs(v DefaultStoragePairs) Pair {
+	return Pair{
+		Key:   "default_storage_pairs",
+		Value: v,
+	}
+}
+
+// WithServiceFeatures will apply service_features value to Options.
+//
+// ServiceFeatures set service features
+func WithServiceFeatures(v ServiceFeatures) Pair {
+	return Pair{
+		Key:   "service_features",
+		Value: v,
+	}
+}
+
+// WithStorageClass will apply storage_class value to Options.
+//
+// StorageClass
+func WithStorageClass(v string) Pair {
+	return Pair{
+		Key:   "storage_class",
+		Value: v,
+	}
+}
+
+// WithStorageFeatures will apply storage_features value to Options.
+//
+// StorageFeatures set storage features
+func WithStorageFeatures(v StorageFeatures) Pair {
+	return Pair{
+		Key:   "storage_features",
+		Value: v,
+	}
+}
+
+var pairMap = map[string]string{
+	"content_md5":           "string",
+	"content_type":          "string",
+	"context":               "context.Context",
+	"continuation_token":    "string",
+	"credential":            "string",
+	"default_service_pairs": "DefaultServicePairs",
+	"default_storage_pairs": "DefaultStoragePairs",
+	"endpoint":              "string",
+	"expire":                "int",
+	"http_client_options":   "*httpclient.Options",
+	"interceptor":           "Interceptor",
+	"io_callback":           "func([]byte)",
+	"list_mode":             "ListMode",
+	"location":              "string",
+	"multipart_id":          "string",
+	"name":                  "string",
+	"object_mode":           "ObjectMode",
+	"offset":                "int64",
+	"service_features":      "ServiceFeatures",
+	"size":                  "int64",
+	"storage_class":         "string",
+	"storage_features":      "StorageFeatures",
+	"work_dir":              "string",
+}
+var (
+	_ Servicer = &Service{}
+)
+
+type ServiceFeatures struct {
+	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
+	LooseOperationAll bool
+	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
+	LooseOperationCreate bool
+	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
+	LooseOperationDelete bool
+	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
+	LooseOperationGet bool
+	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
+	LooseOperationList bool
+
+	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
+	VirtualOperationAll bool
+
+	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
+	VirtualPairAll bool
+}
+
+// pairServiceNew is the parsed struct
+type pairServiceNew struct {
+	pairs []Pair
+
+	// Required pairs
+	HasCredential bool
+	Credential    string
+	HasEndpoint   bool
+	Endpoint      string
+	// Optional pairs
+	HasDefaultServicePairs bool
+	DefaultServicePairs    DefaultServicePairs
+	HasServiceFeatures     bool
+	ServiceFeatures        ServiceFeatures
+}
+
+// parsePairServiceNew will parse Pair slice into *pairServiceNew
+func parsePairServiceNew(opts []Pair) (pairServiceNew, error) {
+	result := pairServiceNew{
+		pairs: opts,
+	}
+
+	for _, v := range opts {
+		switch v.Key {
+		// Required pairs
+		case "credential":
+			if result.HasCredential {
+				continue
+			}
+			result.HasCredential = true
+			result.Credential = v.Value.(string)
+		case "endpoint":
+			if result.HasEndpoint {
+				continue
+			}
+			result.HasEndpoint = true
+			result.Endpoint = v.Value.(string)
+		// Optional pairs
+		case "default_service_pairs":
+			if result.HasDefaultServicePairs {
+				continue
+			}
+			result.HasDefaultServicePairs = true
+			result.DefaultServicePairs = v.Value.(DefaultServicePairs)
+		case "service_features":
+			if result.HasServiceFeatures {
+				continue
+			}
+			result.HasServiceFeatures = true
+			result.ServiceFeatures = v.Value.(ServiceFeatures)
+		}
+	}
+	if !result.HasCredential {
+		return pairServiceNew{}, services.PairRequiredError{Keys: []string{"credential"}}
+	}
+	if !result.HasEndpoint {
+		return pairServiceNew{}, services.PairRequiredError{Keys: []string{"endpoint"}}
+	}
+
+	return result, nil
+}
+
+// DefaultServicePairs is default pairs for specific action
+type DefaultServicePairs struct {
+	Create []Pair
+	Delete []Pair
+	Get    []Pair
+	List   []Pair
+}
+
+// pairServiceCreate is the parsed struct
+type pairServiceCreate struct {
+	pairs []Pair
+}
+
+// parsePairServiceCreate will parse Pair slice into *pairServiceCreate
+func (s *Service) parsePairServiceCreate(opts []Pair) (pairServiceCreate, error) {
+	result := pairServiceCreate{
+		pairs: opts,
+	}
+
+	for _, v := range opts {
+		switch v.Key {
+		default:
+			return pairServiceCreate{}, services.PairUnsupportedError{Pair: v}
+		}
+	}
+
+	// Check required pairs.
+
+	return result, nil
+}
+
+// pairServiceDelete is the parsed struct
+type pairServiceDelete struct {
+	pairs []Pair
+}
+
+// parsePairServiceDelete will parse Pair slice into *pairServiceDelete
+func (s *Service) parsePairServiceDelete(opts []Pair) (pairServiceDelete, error) {
+	result := pairServiceDelete{
+		pairs: opts,
+	}
+
+	for _, v := range opts {
+		switch v.Key {
+		default:
+			return pairServiceDelete{}, services.PairUnsupportedError{Pair: v}
+		}
+	}
+
+	// Check required pairs.
+
+	return result, nil
+}
+
+// pairServiceGet is the parsed struct
+type pairServiceGet struct {
+	pairs []Pair
+}
+
+// parsePairServiceGet will parse Pair slice into *pairServiceGet
+func (s *Service) parsePairServiceGet(opts []Pair) (pairServiceGet, error) {
+	result := pairServiceGet{
+		pairs: opts,
+	}
+
+	for _, v := range opts {
+		switch v.Key {
+		default:
+			return pairServiceGet{}, services.PairUnsupportedError{Pair: v}
+		}
+	}
+
+	// Check required pairs.
+
+	return result, nil
+}
+
+// pairServiceList is the parsed struct
+type pairServiceList struct {
+	pairs []Pair
+}
+
+// parsePairServiceList will parse Pair slice into *pairServiceList
+func (s *Service) parsePairServiceList(opts []Pair) (pairServiceList, error) {
+	result := pairServiceList{
+		pairs: opts,
+	}
+
+	for _, v := range opts {
+		switch v.Key {
+		default:
+			return pairServiceList{}, services.PairUnsupportedError{Pair: v}
+		}
+	}
+
+	// Check required pairs.
+
+	return result, nil
+}
+
+// Create will create a new storager instance.
+//
+// This function will create a context by default.
+func (s *Service) Create(name string, pairs ...Pair) (store Storager, err error) {
+	ctx := context.Background()
+	return s.CreateWithContext(ctx, name, pairs...)
+}
+
+// CreateWithContext will create a new storager instance.
+func (s *Service) CreateWithContext(ctx context.Context, name string, pairs ...Pair) (store Storager, err error) {
+	defer func() {
+		err = s.formatError("create", err, name)
+	}()
+
+	pairs = append(pairs, s.defaultPairs.Create...)
+	var opt pairServiceCreate
+
+	opt, err = s.parsePairServiceCreate(pairs)
+	if err != nil {
+		return
+	}
+
+	return s.create(ctx, name, opt)
+}
+
+// Delete will delete a storager instance.
+//
+// This function will create a context by default.
+func (s *Service) Delete(name string, pairs ...Pair) (err error) {
+	ctx := context.Background()
+	return s.DeleteWithContext(ctx, name, pairs...)
+}
+
+// DeleteWithContext will delete a storager instance.
+func (s *Service) DeleteWithContext(ctx context.Context, name string, pairs ...Pair) (err error) {
+	defer func() {
+		err = s.formatError("delete", err, name)
+	}()
+
+	pairs = append(pairs, s.defaultPairs.Delete...)
+	var opt pairServiceDelete
+
+	opt, err = s.parsePairServiceDelete(pairs)
+	if err != nil {
+		return
+	}
+
+	return s.delete(ctx, name, opt)
+}
+
+// Get will get a valid storager instance for service.
+//
+// This function will create a context by default.
+func (s *Service) Get(name string, pairs ...Pair) (store Storager, err error) {
+	ctx := context.Background()
+	return s.GetWithContext(ctx, name, pairs...)
+}
+
+// GetWithContext will get a valid storager instance for service.
+func (s *Service) GetWithContext(ctx context.Context, name string, pairs ...Pair) (store Storager, err error) {
+	defer func() {
+		err = s.formatError("get", err, name)
+	}()
+
+	pairs = append(pairs, s.defaultPairs.Get...)
+	var opt pairServiceGet
+
+	opt, err = s.parsePairServiceGet(pairs)
+	if err != nil {
+		return
+	}
+
+	return s.get(ctx, name, opt)
+}
+
+// List will list all storager instances under this service.
+//
+// This function will create a context by default.
+func (s *Service) List(pairs ...Pair) (sti *StoragerIterator, err error) {
+	ctx := context.Background()
+	return s.ListWithContext(ctx, pairs...)
+}
+
+// ListWithContext will list all storager instances under this service.
+func (s *Service) ListWithContext(ctx context.Context, pairs ...Pair) (sti *StoragerIterator, err error) {
+	defer func() {
+
+		err = s.formatError("list", err, "")
+	}()
+
+	pairs = append(pairs, s.defaultPairs.List...)
+	var opt pairServiceList
+
+	opt, err = s.parsePairServiceList(pairs)
+	if err != nil {
+		return
+	}
+
+	return s.list(ctx, opt)
+}
+
 var (
 	_ Storager = &Storage{}
 )
@@ -142,6 +487,13 @@ type StorageFeatures struct {
 
 	// Deprecated: This field has been deprecated by GSP-109, planned be removed in v4.3.0.
 	VirtualPairAll bool
+	// VirtualDir virtual_dir feature is designed for a service that doesn't have native dir support but wants to provide simulated operations.
+	//
+	// - If this feature is disabled (the default behavior), the service will behave like it doesn't have any dir support.
+	// - If this feature is enabled, the service will support simulated dir behavior in create_dir, create, list, delete, and so on.
+	//
+	// This feature was introduced in GSP-109.
+	VirtualDir bool
 }
 
 // pairStorageNew is the parsed struct
@@ -149,7 +501,15 @@ type pairStorageNew struct {
 	pairs []Pair
 
 	// Required pairs
+	HasName bool
+	Name    string
 	// Optional pairs
+	HasDefaultStoragePairs bool
+	DefaultStoragePairs    DefaultStoragePairs
+	HasStorageFeatures     bool
+	StorageFeatures        StorageFeatures
+	HasWorkDir             bool
+	WorkDir                string
 }
 
 // parsePairStorageNew will parse Pair slice into *pairStorageNew
@@ -161,8 +521,35 @@ func parsePairStorageNew(opts []Pair) (pairStorageNew, error) {
 	for _, v := range opts {
 		switch v.Key {
 		// Required pairs
+		case "name":
+			if result.HasName {
+				continue
+			}
+			result.HasName = true
+			result.Name = v.Value.(string)
 		// Optional pairs
+		case "default_storage_pairs":
+			if result.HasDefaultStoragePairs {
+				continue
+			}
+			result.HasDefaultStoragePairs = true
+			result.DefaultStoragePairs = v.Value.(DefaultStoragePairs)
+		case "storage_features":
+			if result.HasStorageFeatures {
+				continue
+			}
+			result.HasStorageFeatures = true
+			result.StorageFeatures = v.Value.(StorageFeatures)
+		case "work_dir":
+			if result.HasWorkDir {
+				continue
+			}
+			result.HasWorkDir = true
+			result.WorkDir = v.Value.(string)
 		}
+	}
+	if !result.HasName {
+		return pairStorageNew{}, services.PairRequiredError{Keys: []string{"name"}}
 	}
 
 	return result, nil
@@ -382,13 +769,15 @@ func (s *Storage) parsePairStorageStat(opts []Pair) (pairStorageStat, error) {
 
 // pairStorageWrite is the parsed struct
 type pairStorageWrite struct {
-	pairs          []Pair
-	HasContentMd5  bool
-	ContentMd5     string
-	HasContentType bool
-	ContentType    string
-	HasIoCallback  bool
-	IoCallback     func([]byte)
+	pairs           []Pair
+	HasContentMd5   bool
+	ContentMd5      string
+	HasContentType  bool
+	ContentType     string
+	HasIoCallback   bool
+	IoCallback      func([]byte)
+	HasStorageClass bool
+	StorageClass    string
 }
 
 // parsePairStorageWrite will parse Pair slice into *pairStorageWrite
@@ -419,6 +808,13 @@ func (s *Storage) parsePairStorageWrite(opts []Pair) (pairStorageWrite, error) {
 			}
 			result.HasIoCallback = true
 			result.IoCallback = v.Value.(func([]byte))
+			continue
+		case "storage_class":
+			if result.HasStorageClass {
+				continue
+			}
+			result.HasStorageClass = true
+			result.StorageClass = v.Value.(string)
 			continue
 		default:
 			return pairStorageWrite{}, services.PairUnsupportedError{Pair: v}
@@ -619,6 +1015,7 @@ func (s *Storage) WriteWithContext(ctx context.Context, path string, r io.Reader
 }
 
 func init() {
+	services.RegisterServicer(Type, NewServicer)
 	services.RegisterStorager(Type, NewStorager)
 	services.RegisterSchema(Type, pairMap)
 }
