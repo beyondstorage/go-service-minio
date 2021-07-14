@@ -237,10 +237,9 @@ func (s *Storage) formatFileObject(v minio.ObjectInfo) (o *types.Object, err err
 	o.SetContentLength(v.Size)
 	o.SetContentType(v.ContentType)
 	o.SetLastModified(v.LastModified)
-
-	var sm ObjectSystemMetadata
-	sm.StorageClass = v.StorageClass
-	o.SetSystemMetadata(sm)
+	o.SetSystemMetadata(ObjectSystemMetadata{
+		StorageClass: v.StorageClass,
+	})
 
 	return
 }

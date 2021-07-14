@@ -2,6 +2,7 @@ package minio
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 
@@ -51,10 +52,9 @@ func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete
 
 func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (oi *ObjectIterator, err error) {
 	rp := s.getAbsPath(path)
-	options := minio.ListObjectsOptions{WithMetadata: false}
+	options := minio.ListObjectsOptions{}
 	switch {
 	case opt.ListMode.IsDir():
-		options.Recursive = false
 		if !strings.HasSuffix(rp, "/") {
 			rp += "/"
 		}
@@ -94,10 +94,10 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 			return v.Err
 		}
 		o, err := s.formatFileObject(v)
-		if err != nil && err != services.ErrObjectNotExist {
+		if err != nil && !errors.Is(err, services.ErrObjectNotExist) {
 			return err
 		}
-		if err == services.ErrObjectNotExist {
+		if errors.Is(err, services.ErrObjectNotExist) {
 			continue
 		}
 		page.Data = append(page.Data, o)
