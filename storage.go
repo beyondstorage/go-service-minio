@@ -2,7 +2,6 @@ package minio
 
 import (
 	"context"
-	"errors"
 	"io"
 	"strings"
 
@@ -94,11 +93,8 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 			return v.Err
 		}
 		o, err := s.formatFileObject(v)
-		if err != nil && !errors.Is(err, services.ErrObjectNotExist) {
+		if err != nil {
 			return err
-		}
-		if errors.Is(err, services.ErrObjectNotExist) {
-			continue
 		}
 		page.Data = append(page.Data, o)
 		input.counter++
