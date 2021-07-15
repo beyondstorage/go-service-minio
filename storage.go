@@ -2,13 +2,15 @@ package minio
 
 import (
 	"context"
+	"io"
+	"strings"
+
+	"github.com/minio/minio-go/v7"
+
 	ps "github.com/beyondstorage/go-storage/v4/pairs"
 	"github.com/beyondstorage/go-storage/v4/pkg/iowrap"
 	"github.com/beyondstorage/go-storage/v4/services"
 	. "github.com/beyondstorage/go-storage/v4/types"
-	"github.com/minio/minio-go/v7"
-	"io"
-	"strings"
 )
 
 const defaultListObjectBufferSize = 100
