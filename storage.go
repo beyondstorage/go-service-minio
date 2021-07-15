@@ -63,16 +63,17 @@ func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete
 func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (oi *ObjectIterator, err error) {
 	rp := s.getAbsPath(path)
 	options := minio.ListObjectsOptions{}
-	switch {
-	case opt.ListMode.IsDir():
+
+	if !opt.HasListMode || opt.ListMode.IsPrefix() {
+		options.Recursive = true
+	} else if opt.ListMode.IsDir() {
 		if !strings.HasSuffix(rp, "/") {
 			rp += "/"
 		}
-	case opt.ListMode.IsPrefix():
-		options.Recursive = true
-	default:
+	} else {
 		return nil, services.ListModeInvalidError{Actual: opt.ListMode}
 	}
+
 	options.Prefix = rp
 	input := &objectPageStatus{
 		bufferSize: defaultListObjectBufferSize,
