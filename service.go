@@ -2,11 +2,9 @@ package minio
 
 import (
 	"context"
-
-	"github.com/minio/minio-go/v7"
-
 	ps "github.com/beyondstorage/go-storage/v4/pairs"
 	. "github.com/beyondstorage/go-storage/v4/types"
+	"github.com/minio/minio-go/v7"
 )
 
 func (s *Service) create(ctx context.Context, name string, opt pairServiceCreate) (store Storager, err error) {
@@ -39,7 +37,6 @@ func (s *Service) get(ctx context.Context, name string, opt pairServiceGet) (sto
 
 func (s *Service) list(ctx context.Context, opt pairServiceList) (sti *StoragerIterator, err error) {
 	input := &storagePageStatus{}
-
 	return NewStoragerIterator(ctx, s.nextStoragePage, input), nil
 }
 

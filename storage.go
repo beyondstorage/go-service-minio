@@ -2,15 +2,13 @@ package minio
 
 import (
 	"context"
-	"io"
-	"strings"
-
-	"github.com/minio/minio-go/v7"
-
 	ps "github.com/beyondstorage/go-storage/v4/pairs"
 	"github.com/beyondstorage/go-storage/v4/pkg/iowrap"
 	"github.com/beyondstorage/go-storage/v4/services"
 	. "github.com/beyondstorage/go-storage/v4/types"
+	"github.com/minio/minio-go/v7"
+	"io"
+	"strings"
 )
 
 const defaultListObjectBufferSize = 100
@@ -63,7 +61,6 @@ func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (o
 		return nil, services.ListModeInvalidError{Actual: opt.ListMode}
 	}
 	options.Prefix = rp
-
 	input := &objectPageStatus{
 		bufferSize: defaultListObjectBufferSize,
 		options:    options,
@@ -83,7 +80,6 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 	if input.objChan == nil {
 		input.objChan = s.client.ListObjects(ctx, s.bucket, input.options)
 	}
-
 	for i := 0; i < input.bufferSize; i++ {
 		v, ok := <-input.objChan
 		if !ok {
