@@ -16,7 +16,17 @@ import (
 const defaultListObjectBufferSize = 100
 
 func (s *Storage) copy(ctx context.Context, src string, dst string, opt pairStorageCopy) (err error) {
-	panic("not implemented")
+	srcOpts := minio.CopySrcOptions{
+		Bucket: s.bucket,
+		Object: s.getAbsPath(src),
+	}
+	dstOpts := minio.CopyDestOptions{
+		Bucket: s.bucket,
+		Object: s.getAbsPath(dst),
+	}
+
+	_, err = s.client.CopyObject(ctx, dstOpts, srcOpts)
+	return err
 }
 
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
@@ -47,10 +57,7 @@ func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete
 		rp += "/"
 	}
 	err = s.client.RemoveObject(ctx, s.bucket, rp, minio.RemoveObjectOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (oi *ObjectIterator, err error) {
