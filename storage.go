@@ -106,10 +106,25 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 	if err != nil {
 		return 0, err
 	}
-	defer output.Close()
+	defer func() {
+		cerr := output.Close()
+		if cerr != nil {
+			err = cerr
+		}
+	}()
+
+	if opt.HasOffset {
+		_, err  = output.Seek(opt.Offset, 0)
+		if err != nil {
+			return 0, err
+		}
+	}
 	var rc io.ReadCloser = output
+	if opt.HasSize {
+		rc = iowrap.LimitReadCloser(rc, opt.Size)
+	}
 	if opt.HasIoCallback {
-		rc = iowrap.CallbackReadCloser(output, opt.IoCallback)
+		rc = iowrap.CallbackReadCloser(rc, opt.IoCallback)
 	}
 	return io.Copy(w, rc)
 }
