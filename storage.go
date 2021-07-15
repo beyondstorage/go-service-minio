@@ -15,6 +15,10 @@ import (
 
 const defaultListObjectBufferSize = 100
 
+func (s *Storage) copy(ctx context.Context, src string, dst string, opt pairStorageCopy) (err error) {
+	panic("not implemented")
+}
+
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 	rp := s.getAbsPath(path)
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
@@ -114,7 +118,7 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 	}()
 
 	if opt.HasOffset {
-		_, err  = output.Seek(opt.Offset, 0)
+		_, err = output.Seek(opt.Offset, 0)
 		if err != nil {
 			return 0, err
 		}

@@ -412,6 +412,7 @@ func (s *Service) ListWithContext(ctx context.Context, pairs ...Pair) (sti *Stor
 }
 
 var (
+	_ Copier   = &Storage{}
 	_ Storager = &Storage{}
 )
 
@@ -486,6 +487,7 @@ func parsePairStorageNew(opts []Pair) (pairStorageNew, error) {
 
 // DefaultStoragePairs is default pairs for specific action
 type DefaultStoragePairs struct {
+	Copy     []Pair
 	Create   []Pair
 	Delete   []Pair
 	List     []Pair
@@ -493,6 +495,29 @@ type DefaultStoragePairs struct {
 	Read     []Pair
 	Stat     []Pair
 	Write    []Pair
+}
+
+// pairStorageCopy is the parsed struct
+type pairStorageCopy struct {
+	pairs []Pair
+}
+
+// parsePairStorageCopy will parse Pair slice into *pairStorageCopy
+func (s *Storage) parsePairStorageCopy(opts []Pair) (pairStorageCopy, error) {
+	result := pairStorageCopy{
+		pairs: opts,
+	}
+
+	for _, v := range opts {
+		switch v.Key {
+		default:
+			return pairStorageCopy{}, services.PairUnsupportedError{Pair: v}
+		}
+	}
+
+	// Check required pairs.
+
+	return result, nil
 }
 
 // pairStorageCreate is the parsed struct
@@ -753,6 +778,31 @@ func (s *Storage) parsePairStorageWrite(opts []Pair) (pairStorageWrite, error) {
 	// Check required pairs.
 
 	return result, nil
+}
+
+// Copy will copy an Object or multiple object in the service.
+//
+// This function will create a context by default.
+func (s *Storage) Copy(src string, dst string, pairs ...Pair) (err error) {
+	ctx := context.Background()
+	return s.CopyWithContext(ctx, src, dst, pairs...)
+}
+
+// CopyWithContext will copy an Object or multiple object in the service.
+func (s *Storage) CopyWithContext(ctx context.Context, src string, dst string, pairs ...Pair) (err error) {
+	defer func() {
+		err = s.formatError("copy", err, src, dst)
+	}()
+
+	pairs = append(pairs, s.defaultPairs.Copy...)
+	var opt pairStorageCopy
+
+	opt, err = s.parsePairStorageCopy(pairs)
+	if err != nil {
+		return
+	}
+
+	return s.copy(ctx, src, dst, opt)
 }
 
 // Create will create a new object without any api call.
