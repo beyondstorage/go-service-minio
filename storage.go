@@ -15,6 +15,10 @@ import (
 
 const defaultListObjectBufferSize = 100
 
+func (s *Storage) copy(ctx context.Context, src string, dst string, opt pairStorageCopy) (err error) {
+	panic("not implemented")
+}
+
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 	rp := s.getAbsPath(path)
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
@@ -63,7 +67,6 @@ func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (o
 		return nil, services.ListModeInvalidError{Actual: opt.ListMode}
 	}
 	options.Prefix = rp
-
 	input := &objectPageStatus{
 		bufferSize: defaultListObjectBufferSize,
 		options:    options,
@@ -83,7 +86,6 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 	if input.objChan == nil {
 		input.objChan = s.client.ListObjects(ctx, s.bucket, input.options)
 	}
-
 	for i := 0; i < input.bufferSize; i++ {
 		v, ok := <-input.objChan
 		if !ok {
@@ -114,9 +116,8 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 			err = cerr
 		}
 	}()
-
 	if opt.HasOffset {
-		_, err  = output.Seek(opt.Offset, 0)
+		_, err = output.Seek(opt.Offset, 0)
 		if err != nil {
 			return 0, err
 		}
