@@ -233,12 +233,13 @@ func (s *Storage) formatFileObject(v minio.ObjectInfo) (o *types.Object, err err
 		o.Mode |= types.ModeRead
 	}
 
-	o.ID = v.Key
-	o.Path = s.getRelPath(v.Key)
+	o.SetID(v.Key)
+	o.SetPath(s.getRelPath(v.Key))
 	o.SetEtag(v.ETag)
 	o.SetContentLength(v.Size)
 	o.SetContentType(v.ContentType)
 	o.SetLastModified(v.LastModified)
+	o.SetUserMetadata(v.UserMetadata)
 	o.SetSystemMetadata(ObjectSystemMetadata{
 		StorageClass: v.StorageClass,
 	})
