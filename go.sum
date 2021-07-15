@@ -6,6 +6,8 @@ github.com/beyondstorage/go-integration-test/v4 v4.1.1 h1:9bSXKbr6hLb4+ZsmAhWE32
 github.com/beyondstorage/go-integration-test/v4 v4.1.1/go.mod h1:ihtCaOJvaHGE0v+IhY6ZUF5NU1IND6xmdrJI9Lq/jhc=
 github.com/beyondstorage/go-storage/v4 v4.2.0 h1:J0xqqy4qEQRtIS2zUWMA5wRXVHx/cxX5fHsU2ezA3+I=
 github.com/beyondstorage/go-storage/v4 v4.2.0/go.mod h1:rUNzOXcikYk5w0ewvNsKbztg7ndQDyDvjDuP0bznSLU=
+github.com/beyondstorage/go-storage/v4 v4.3.0 h1:4WvcxGcIWBiLFUICec9OxaFtLfQ1akDIRW1h6D6TfUE=
+github.com/beyondstorage/go-storage/v4 v4.3.0/go.mod h1:0fdcRCzLKMQe7Ve4zPlyTGgoPYwuINiV79Gx9tCt9tQ=
 github.com/beyondstorage/specs/go v0.0.0-20210623065218-d1c2d7d81259 h1:mW9XpHLc6pdXBRnsha1VlqF0rNsB/Oc+8l+5UYngmRA=
 github.com/beyondstorage/specs/go v0.0.0-20210623065218-d1c2d7d81259/go.mod h1:vF/Q0P1tCvhVAUrxg7i6NvrARRMQVTAuQdDNqpSzR1w=
 github.com/dave/dst v0.26.2 h1:lnxLAKI3tx7MgLNVDirFCsDTlTG9nKTk7GcptKcWSwY=
