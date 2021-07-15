@@ -2,6 +2,7 @@ package minio
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/minio/minio-go/v7"
@@ -150,8 +151,15 @@ func formatError(err error) error {
 			return fmt.Errorf("%w, %v", services.ErrPermissionDenied, err)
 		case "NoSuchKey":
 			return fmt.Errorf("%w, %v", services.ErrObjectNotExist, err)
-		default:
-			return fmt.Errorf("%w, %v", services.ErrUnexpected, err)
+		case "InternalError":
+			return fmt.Errorf("%w, %v", services.ErrServiceInternal, err)
+		}
+
+		switch e.StatusCode {
+		case http.StatusTooManyRequests:
+			return fmt.Errorf("%w, %v", services.ErrRequestThrottled, err)
+		case http.StatusServiceUnavailable:
+			return fmt.Errorf("%w, %v", services.ErrRequestThrottled, err)
 		}
 	}
 
