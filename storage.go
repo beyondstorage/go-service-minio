@@ -116,7 +116,7 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 	}()
 
 	if opt.HasOffset {
-		_, err  = output.Seek(opt.Offset, 0)
+		_, err = output.Seek(opt.Offset, 0)
 		if err != nil {
 			return 0, err
 		}
