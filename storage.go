@@ -15,6 +15,20 @@ import (
 
 const defaultListObjectBufferSize = 100
 
+func (s *Storage) copy(ctx context.Context, src string, dst string, opt pairStorageCopy) (err error) {
+	srcOpts := minio.CopySrcOptions{
+		Bucket: s.bucket,
+		Object: s.getAbsPath(src),
+	}
+	dstOpts := minio.CopyDestOptions{
+		Bucket: s.bucket,
+		Object: s.getAbsPath(dst),
+	}
+
+	_, err = s.client.CopyObject(ctx, dstOpts, srcOpts)
+	return err
+}
+
 func (s *Storage) create(path string, opt pairStorageCreate) (o *Object) {
 	rp := s.getAbsPath(path)
 	if opt.HasObjectMode && opt.ObjectMode.IsDir() {
@@ -43,27 +57,24 @@ func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete
 		rp += "/"
 	}
 	err = s.client.RemoveObject(ctx, s.bucket, rp, minio.RemoveObjectOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (oi *ObjectIterator, err error) {
 	rp := s.getAbsPath(path)
 	options := minio.ListObjectsOptions{}
-	switch {
-	case opt.ListMode.IsDir():
+
+	if !opt.HasListMode || opt.ListMode.IsPrefix() {
+		options.Recursive = true
+	} else if opt.ListMode.IsDir() {
 		if !strings.HasSuffix(rp, "/") {
 			rp += "/"
 		}
-	case opt.ListMode.IsPrefix():
-		options.Recursive = true
-	default:
+	} else {
 		return nil, services.ListModeInvalidError{Actual: opt.ListMode}
 	}
-	options.Prefix = rp
 
+	options.Prefix = rp
 	input := &objectPageStatus{
 		bufferSize: defaultListObjectBufferSize,
 		options:    options,
@@ -83,7 +94,6 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 	if input.objChan == nil {
 		input.objChan = s.client.ListObjects(ctx, s.bucket, input.options)
 	}
-
 	for i := 0; i < input.bufferSize; i++ {
 		v, ok := <-input.objChan
 		if !ok {
@@ -114,7 +124,6 @@ func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairSt
 			err = cerr
 		}
 	}()
-
 	if opt.HasOffset {
 		_, err = output.Seek(opt.Offset, 0)
 		if err != nil {
