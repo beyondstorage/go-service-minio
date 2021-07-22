@@ -3,7 +3,9 @@ package minio
 import (
 	"context"
 	"io"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 
@@ -24,7 +26,6 @@ func (s *Storage) copy(ctx context.Context, src string, dst string, opt pairStor
 		Bucket: s.bucket,
 		Object: s.getAbsPath(dst),
 	}
-
 	_, err = s.client.CopyObject(ctx, dstOpts, srcOpts)
 	return err
 }
@@ -63,7 +64,6 @@ func (s *Storage) delete(ctx context.Context, path string, opt pairStorageDelete
 func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (oi *ObjectIterator, err error) {
 	rp := s.getAbsPath(path)
 	options := minio.ListObjectsOptions{}
-
 	if !opt.HasListMode || opt.ListMode.IsPrefix() {
 		options.Recursive = true
 	} else if opt.ListMode.IsDir() {
@@ -73,7 +73,6 @@ func (s *Storage) list(ctx context.Context, path string, opt pairStorageList) (o
 	} else {
 		return nil, services.ListModeInvalidError{Actual: opt.ListMode}
 	}
-
 	options.Prefix = rp
 	input := &objectPageStatus{
 		bufferSize: defaultListObjectBufferSize,
@@ -110,6 +109,19 @@ func (s *Storage) nextObjectPage(ctx context.Context, page *ObjectPage) error {
 		input.counter++
 	}
 	return nil
+}
+
+func (s *Storage) reach(ctx context.Context, path string, opt pairStorageReach) (url_ string, err error) {
+	rp := s.getAbsPath(path)
+	var expire = time.Hour * 1
+	if opt.HasExpire {
+		expire = opt.Expire
+	}
+	URL, err := s.client.PresignedGetObject(ctx, s.bucket, rp, expire, url.Values{})
+	if err != nil {
+		return "", err
+	}
+	return URL.String(), nil
 }
 
 func (s *Storage) read(ctx context.Context, path string, w io.Writer, opt pairStorageRead) (n int64, err error) {

@@ -4,17 +4,17 @@ package minio
 import (
 	"context"
 	"io"
+	"time"
 
-	"github.com/beyondstorage/go-storage/v4/pkg/credential"
 	"github.com/beyondstorage/go-storage/v4/pkg/httpclient"
 	"github.com/beyondstorage/go-storage/v4/services"
 	. "github.com/beyondstorage/go-storage/v4/types"
 )
 
-var _ credential.Provider
 var _ Storager
 var _ services.ServiceError
 var _ httpclient.Options
+var _ time.Duration
 
 // Type is the type for minio
 const Type = "minio"
@@ -125,7 +125,7 @@ var pairMap = map[string]string{
 	"default_service_pairs": "DefaultServicePairs",
 	"default_storage_pairs": "DefaultStoragePairs",
 	"endpoint":              "string",
-	"expire":                "int",
+	"expire":                "time.Duration",
 	"http_client_options":   "*httpclient.Options",
 	"interceptor":           "Interceptor",
 	"io_callback":           "func([]byte)",
@@ -413,6 +413,7 @@ func (s *Service) ListWithContext(ctx context.Context, pairs ...Pair) (sti *Stor
 
 var (
 	_ Copier   = &Storage{}
+	_ Reacher  = &Storage{}
 	_ Storager = &Storage{}
 )
 
@@ -492,6 +493,7 @@ type DefaultStoragePairs struct {
 	Delete   []Pair
 	List     []Pair
 	Metadata []Pair
+	Reach    []Pair
 	Read     []Pair
 	Stat     []Pair
 	Write    []Pair
@@ -631,6 +633,38 @@ func (s *Storage) parsePairStorageMetadata(opts []Pair) (pairStorageMetadata, er
 		switch v.Key {
 		default:
 			return pairStorageMetadata{}, services.PairUnsupportedError{Pair: v}
+		}
+	}
+
+	// Check required pairs.
+
+	return result, nil
+}
+
+// pairStorageReach is the parsed struct
+type pairStorageReach struct {
+	pairs     []Pair
+	HasExpire bool
+	Expire    time.Duration
+}
+
+// parsePairStorageReach will parse Pair slice into *pairStorageReach
+func (s *Storage) parsePairStorageReach(opts []Pair) (pairStorageReach, error) {
+	result := pairStorageReach{
+		pairs: opts,
+	}
+
+	for _, v := range opts {
+		switch v.Key {
+		case "expire":
+			if result.HasExpire {
+				continue
+			}
+			result.HasExpire = true
+			result.Expire = v.Value.(time.Duration)
+			continue
+		default:
+			return pairStorageReach{}, services.PairUnsupportedError{Pair: v}
 		}
 	}
 
@@ -938,6 +972,31 @@ func (s *Storage) Metadata(pairs ...Pair) (meta *StorageMeta) {
 	opt, _ = s.parsePairStorageMetadata(pairs)
 
 	return s.metadata(opt)
+}
+
+// Reach will provide a way, which can reach the object.
+//
+// This function will create a context by default.
+func (s *Storage) Reach(path string, pairs ...Pair) (url string, err error) {
+	ctx := context.Background()
+	return s.ReachWithContext(ctx, path, pairs...)
+}
+
+// ReachWithContext will provide a way, which can reach the object.
+func (s *Storage) ReachWithContext(ctx context.Context, path string, pairs ...Pair) (url string, err error) {
+	defer func() {
+		err = s.formatError("reach", err, path)
+	}()
+
+	pairs = append(pairs, s.defaultPairs.Reach...)
+	var opt pairStorageReach
+
+	opt, err = s.parsePairStorageReach(pairs)
+	if err != nil {
+		return
+	}
+
+	return s.reach(ctx, path, opt)
 }
 
 // Read will read the file's data.
