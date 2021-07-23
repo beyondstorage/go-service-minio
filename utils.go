@@ -41,6 +41,7 @@ type Storage struct {
 
 	types.UnimplementedStorager
 	types.UnimplementedCopier
+	types.UnimplementedReacher
 }
 
 // String implements Storager.String
