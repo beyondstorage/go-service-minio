@@ -224,6 +224,9 @@ func (s *Storage) formatError(op string, err error, path ...string) error {
 
 // getAbsPath will calculate object storage's abs path
 func (s *Storage) getAbsPath(path string) string {
+	if strings.HasPrefix(path, s.workDir) {
+		return strings.TrimPrefix(path, "/")
+	}
 	prefix := strings.TrimPrefix(s.workDir, "/")
 	return prefix + path
 }
