@@ -170,6 +170,8 @@ func (s *Storage) stat(ctx context.Context, path string, opt pairStorageStat) (o
 	if err != nil {
 		return nil, err
 	}
+	// Object.Path is either the absolute path or the relative path based on the working directory depends on the input.
+	o.Path = path
 	return
 }
 

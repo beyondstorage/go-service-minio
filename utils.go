@@ -238,11 +238,10 @@ func (s *Storage) getRelPath(path string) string {
 }
 
 func (s *Storage) formatFileObject(v minio.ObjectInfo) (o *types.Object, err error) {
+	o = s.newObject(true)
 	if v.ETag == "" {
-		o = s.newObject(true)
 		o.Mode |= types.ModeDir
 	} else {
-		o = s.newObject(false)
 		o.Mode |= types.ModeRead
 	}
 
