@@ -7,9 +7,8 @@ github.com/Xuanwo/templateutils v0.1.0 h1:WpkWOqQtIQ2vAIpJLa727DdN8WtxhUkkbDGa6U
 github.com/Xuanwo/templateutils v0.1.0/go.mod h1:OdE0DJ+CJxDBq6psX5DPV+gOZi8bhuHuVUpPCG++Wb8=
 github.com/beyondstorage/go-endpoint v1.1.0 h1:cpjmQdrAMyaLoT161NIFU/eXcsuMI3xViycid5/mBZg=
 github.com/beyondstorage/go-endpoint v1.1.0/go.mod h1:P2hknaGrziOJJKySv/XnAiVw/d3v12/LZu2gSxEx4nM=
-github.com/beyondstorage/go-integration-test/v4 v4.5.0 h1:PMrB+aWd6yNwlrJSJOjqNLJtujsKderoSkG9/QOEQr0=
-github.com/beyondstorage/go-integration-test/v4 v4.5.0/go.mod h1:o0pHhyaRR/OO6QxnRqWW3aFjTycBZjoKSdHKN/JZRjo=
-github.com/beyondstorage/go-storage/v4 v4.7.0/go.mod h1:mc9VzBImjXDg1/1sLfta2MJH79elfM6m47ZZvZ+q/Uw=
+github.com/beyondstorage/go-integration-test/v4 v4.6.0 h1:CAFx/d7KiAzDeaqNmRgbnp2nnLBmAMhh3D8+axcne5o=
+github.com/beyondstorage/go-integration-test/v4 v4.6.0/go.mod h1:VvCSws4hOPKCyLlGhRDMjOh6FIcRbGG06ATNESLB7Ek=
 github.com/beyondstorage/go-storage/v4 v4.8.0 h1:f0vC20h0deCrsid/nIApKGFw37Fv4VslpQBFtbNRJNU=
 github.com/beyondstorage/go-storage/v4 v4.8.0/go.mod h1:zknx9z1WOSs0ow8eg8iuTgvMCqNnNJWxB2S9cAvhitM=
 github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d h1:U+s90UTSYgptZMwQh2aRr3LuazLJIa+Pg3Kc1ylSYVY=
@@ -63,7 +62,6 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJ
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.1 h1:9f412s+6RmYXLWZSEzVVgPGK7C2PphHj5RJrvfx9AWI=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
-github.com/pelletier/go-toml v1.9.3/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
 github.com/pelletier/go-toml v1.9.4 h1:tjENF6MfZAg8e4ZmZTeWaWiT2vXtsoO6+iuOjFhECwM=
 github.com/pelletier/go-toml v1.9.4/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
